@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Micro Journal" />
+  <title>Micro Journal</title>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0c0c0c; --surface: #141414; --border: #222; --border-light: #1a1a1a;
+      --text: #e2d9c8; --text-muted: #666; --text-dim: #444; --accent: #c8a96e;
+      --green: #8faf87; --mono: 'Space Mono', monospace; --serif: 'EB Garamond', Georgia, serif;
+    }
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--serif); -webkit-font-smoothing: antialiased; overscroll-behavior: none; }
+    body { display: flex; flex-direction: column; min-height: 100vh; min-height: -webkit-fill-available; }
+    .header { padding: 52px 24px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; }
+    .header-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
+    .header-title { font-size: 24px; font-weight: 400; font-style: italic; letter-spacing: -0.01em; color: var(--text); }
+    .btn-copy-all { font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 7px 12px; cursor: pointer; border-radius: 2px; transition: color 0.2s, border-color 0.2s; white-space: nowrap; }
+    .btn-copy-all.copied { color: var(--green); border-color: var(--green); }
+    .main { flex: 1; padding: 32px 24px 24px; display: flex; flex-direction: column; }
+    .idle-state { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; gap: 20px; padding-bottom: 40px; }
+    .idle-rule { width: 40px; height: 1px; background: var(--border); }
+    .idle-tagline { font-style: italic; font-size: 14px; color: var(--text-muted); text-align: center; line-height: 1.7; }
+    .prompt-card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); padding: 18px 20px; border-radius: 2px; margin-bottom: 18px; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    .prompt-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+    .prompt-text { font-size: 17px; font-style: italic; line-height: 1.65; color: #d8cfc0; }
+    textarea { width: 100%; min-height: 88px; background: var(--surface); border: 1px solid var(--border); border-radius: 2px; color: var(--text); font-size: 16px; font-family: var(--serif); font-style: italic; padding: 14px 16px; resize: none; outline: none; line-height: 1.6; -webkit-appearance: none; transition: border-color 0.2s; }
+    textarea:focus { border-color: #333; }
+    textarea::placeholder { color: var(--text-dim); font-style: italic; }
+    .btn-primary { width: 100%; background: var(--text); color: var(--bg); border: none; padding: 15px; font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.22em; text-transform: uppercase; cursor: pointer; border-radius: 2px; transition: opacity 0.2s; -webkit-tap-highlight-color: transparent; }
+    .btn-primary:disabled { background: #1e1e1e; color: var(--text-dim); cursor: default; }
+    .btn-primary:not(:disabled):active { opacity: 0.85; }
+    .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+    .btn-secondary { flex: 1; background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 13px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; border-radius: 2px; transition: color 0.2s, border-color 0.2s; -webkit-tap-highlight-color: transparent; }
+    .btn-secondary.copied { color: var(--green); border-color: var(--green); }
+    .saved-card { background: var(--surface); border: 1px solid var(--border); padding: 14px 18px; border-radius: 2px; margin-bottom: 12px; animation: fadeIn 0.3s ease; }
+    .saved-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--green); margin-bottom: 8px; }
+    .saved-response { font-size: 14px; font-style: italic; color: #aaa; line-height: 1.6; }
+    .log { border-top: 1px solid var(--border-light); padding: 20px 24px 40px; flex-shrink: 0; }
+    .log-header { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 14px; }
+    .log-entries { display: flex; flex-direction: column; gap: 10px; }
+    .log-entry { background: #111; border: 1px solid var(--border-light); border-radius: 2px; padding: 13px 16px; animation: fadeIn 0.3s ease; }
+    .log-entry-prompt { font-family: var(--mono); font-size: 10px; color: var(--text-dim); font-style: italic; margin-bottom: 5px; line-height: 1.5; }
+    .log-entry-response { font-size: 13px; font-style: italic; color: #bbb; line-height: 1.55; margin-bottom: 10px; }
+    .btn-log-copy { background: transparent; border: none; color: var(--text-dim); font-family: var(--mono); font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; cursor: pointer; padding: 0; -webkit-tap-highlight-color: transparent; }
+    .btn-log-copy.copied { color: var(--green); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="header-label">Between sets</div>
+      <div class="header-title">Micro Journal</div>
+    </div>
+    <button class="btn-copy-all" id="btnCopyAll" style="display:none" onclick="copyAll()">Copy all</button>
+  </div>
+  <div class="main">
+    <div class="idle-state" id="idleState">
+      <div class="idle-rule"></div>
+      <div class="idle-tagline">Rest. Reflect.<br>One sentence.</div>
+      <button class="btn-primary" onclick="getPrompt()" style="max-width:200px">Get prompt</button>
+    </div>
+    <div id="promptedState" style="display:none">
+      <div class="prompt-card">
+        <div class="prompt-label">Prompt</div>
+        <div class="prompt-text" id="promptText"></div>
+      </div>
+      <textarea id="responseInput" placeholder="One or two sentences..." oninput="onResponseInput()"></textarea>
+      <button class="btn-primary" id="btnSave" onclick="saveEntry()" disabled style="margin-top:12px">Save entry</button>
+    </div>
+    <div id="doneState" style="display:none">
+      <div class="prompt-card">
+        <div class="prompt-label">Prompt</div>
+        <div class="prompt-text" id="promptTextDone"></div>
+      </div>
+      <div class="saved-card">
+        <div class="saved-label">Saved ✓</div>
+        <div class="saved-response" id="savedResponseText"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-secondary btn-primary" onclick="getPrompt()" style="flex:1;background:var(--text);color:var(--bg);border:none">Next prompt</button>
+        <button class="btn-secondary" id="btnCopyLatest" onclick="copyLatest()">Copy entry</button>
+      </div>
+    </div>
+  </div>
+  <div class="log" id="logSection" style="display:none">
+    <div class="log-header" id="logHeader">This session · 0 entries</div>
+    <div class="log-entries" id="logEntries"></div>
+  </div>
+  <script>
+    const PROMPTS = [
+      "What does your body feel like right now, beyond just tired or fine?",
+      "What muscle group are you most aware of in this moment?",
+      "If your energy today were a weather pattern, what would it be?",
+      "What did it take to get yourself here today?",
+      "Where are you holding tension that has nothing to do with this workout?",
+      "What does rest actually feel like right now — welcomed or frustrating?",
+      "What would you tell someone who asked how you're really doing today?",
+      "Notice one thing about this room you haven't noticed before.",
+      "What does your breathing tell you about how you're feeling?",
+      "What part of today have you been avoiding thinking about?",
+      "What's something you've been meaning to say to someone but haven't?",
+      "What belief have you held for years that you're less sure of lately?",
+      "What would you do differently about last week if you could?",
+      "What's a version of yourself you've quietly let go of?",
+      "What are you most afraid of getting wrong right now in your life?",
+      "What's something small you did recently that you're quietly proud of?",
+      "What conversation keeps replaying in your head this week?",
+      "What do you want more of that you're not actively pursuing?",
+      "What's a habit you have that you've never really questioned?",
+      "When did you last feel completely present — what were you doing?",
+      "What's something you've outgrown but haven't admitted yet?",
+      "What does success look like to you right now, honestly?",
+      "What are you tolerating that you shouldn't be?",
+      "What's the story you tell yourself about why things are the way they are?",
+      "What would you do if you knew no one was watching or judging?",
+      "Who has shown up for you recently, and have you acknowledged it?",
+      "Who are you taking for granted right now?",
+      "What do you wish someone in your life understood about you better?",
+      "When did you last make someone feel genuinely seen?",
+      "What's something a friend did recently that you want to emulate?",
+      "Is there anyone you owe a real conversation to?",
+      "Who makes you feel most like yourself, and when did you last see them?",
+      "What's something you've never told a close friend but probably should?",
+      "What relationship in your life needs more intentional energy?",
+      "What would the people closest to you say is your blind spot?",
+      "What are you building right now, and does it still excite you?",
+      "What would you regret not trying five years from now?",
+      "What's one thing you keep putting off that would meaningfully move something forward?",
+      "What does the next version of your life actually look like?",
+      "What's a goal you've held so long it's become background noise?",
+      "What would you do with your time if money weren't a factor?",
+      "What are you optimizing for right now — and is it the right thing?",
+      "What small step toward something big could you take today?",
+      "What would you attempt if you knew you couldn't fail at it?",
+      "What does your life look like in three years if nothing changes?",
+      "What does discipline mean to you beyond just showing up?",
+      "What's the difference between being busy and being productive in your own life?",
+      "What's something you believe that most people around you don't?",
+      "What does it mean to live well, by your own definition?",
+      "What's a tension in your life you've stopped trying to resolve?",
+      "What's the most useful idea you've encountered in the last month?",
+      "What do you think you're wrong about?",
+      "What's the hardest thing about being honest with yourself?",
+      "What does rest mean to you — not sleep, but actual restoration?",
+      "What's the difference between patience and avoidance in your life right now?",
+      "What does enough look like — in work, in ambition, in stuff?",
+      "What's a value you hold that your actions don't always reflect?",
+      "What's something you understand intellectually but haven't internalized yet?",
+      "What's the last thing that genuinely changed how you see something?",
+      "What would it mean for you to live more simply?",
+      "What's something beautiful you noticed in the last few days?",
+      "What's a detail about your daily environment you've stopped seeing?",
+      "What's something you'd photograph right now if you had your camera?",
+      "What's the last image that stuck with you and why?",
+      "What's a texture, sound, or smell that takes you somewhere specific?",
+      "What would your life look like as a still frame — right now, this week?",
+      "What's something ordinary that you find secretly fascinating?",
+      "If you had to describe this week's feeling as a color, what would it be?",
+      "What's the most interesting thing you've read or heard recently?",
+      "What's something you want to make or create that you haven't started?",
+      "What's a skill you're developing that still feels uncomfortable?",
+      "What's something you've gotten noticeably better at in the last year?",
+      "What's a mistake you've made recently that taught you something useful?",
+      "What would it look like to take your learning more seriously?",
+      "What's something you've been curious about but haven't explored?",
+      "Who is someone you want to learn from, and what's stopping you?",
+      "What's a piece of feedback you received that stung — and was probably right?",
+      "What does growth feel like for you right now — exciting, painful, or stalled?",
+      "What's a book, idea, or conversation that's been sitting with you?",
+      "What would you want to be known for having mastered?",
+      "What's something about your life right now that you'd miss if it were gone?",
+      "What's an inconvenience in your life that is actually a privilege?",
+      "What's something about your city that you genuinely love?",
+      "Who is someone in your life whose presence you underestimate?",
+      "What's a small pleasure you've been too distracted to appreciate?",
+      "What's something about today that is, quietly, pretty good?",
+      "What's a version of your life from a few years ago that you'd be glad you left?",
+      "What does having enough feel like — have you felt it recently?",
+      "If this rest period were a metaphor for something in your life, what would it be?",
+      "What would you say to your 22-year-old self in one sentence?",
+      "What's something you're doing out of habit that deserves a second look?",
+      "If someone followed you for a day, what would they notice that you don't?",
+      "What's a question you've been avoiding asking yourself?",
+      "What does your gut say about something your head keeps overriding?",
+      "What's the gap between who you are and who you want to be right now?",
+      "What's something you pretend not to care about but actually do?",
+      "What would it mean to be more honest in just one area of your life?",
+      "What's one thing you know is true about yourself that took years to admit?"
+    ];
+
+    let usedIndices = [], currentPrompt = "", entries = [], copiedTimers = {};
+
+    function getRandomPrompt() {
+      if (usedIndices.length >= PROMPTS.length) usedIndices = [];
+      let idx;
+      do { idx = Math.floor(Math.random() * PROMPTS.length); } while (usedIndices.includes(idx));
+      usedIndices.push(idx);
+      return PROMPTS[idx];
+    }
+
+    function show(id) {
+      ["idleState","promptedState","doneState"].forEach(s => {
+        document.getElementById(s).style.display = s === id ? (s === "idleState" ? "flex" : "block") : "none";
+      });
+    }
+
+    function formatEntry(prompt, response) {
+      const now = new Date();
+      const date = now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+      const time = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      return `${date} · ${time}\n${prompt}\n→ ${response}`;
+    }
+
+    function getPrompt() {
+      currentPrompt = getRandomPrompt();
+      document.getElementById("promptText").textContent = currentPrompt;
+      document.getElementById("responseInput").value = "";
+      document.getElementById("btnSave").disabled = true;
+      show("promptedState");
+      setTimeout(() => document.getElementById("responseInput").focus(), 100);
+    }
+
+    function onResponseInput() {
+      document.getElementById("btnSave").disabled = !document.getElementById("responseInput").value.trim();
+    }
+
+    function saveEntry() {
+      const response = document.getElementById("responseInput").value.trim();
+      if (!response) return;
+      const entry = { prompt: currentPrompt, response, formatted: formatEntry(currentPrompt, response) };
+      entries.unshift(entry);
+      document.getElementById("promptTextDone").textContent = currentPrompt;
+      document.getElementById("savedResponseText").textContent = response;
+      document.getElementById("btnCopyLatest").textContent = "Copy entry";
+      document.getElementById("btnCopyLatest").classList.remove("copied");
+      show("doneState");
+      updateLog();
+    }
+
+    function updateLog() {
+      const logSection = document.getElementById("logSection");
+      const btnCopyAll = document.getElementById("btnCopyAll");
+      if (!entries.length) { logSection.style.display = "none"; btnCopyAll.style.display = "none"; return; }
+      logSection.style.display = "block";
+      btnCopyAll.style.display = "block";
+      document.getElementById("logHeader").textContent = `This session · ${entries.length} ${entries.length === 1 ? "entry" : "entries"}`;
+      btnCopyAll.textContent = `Copy all (${entries.length})`;
+      document.getElementById("logEntries").innerHTML = entries.map((e, i) => `
+        <div class="log-entry">
+          <div class="log-entry-prompt">${esc(e.prompt)}</div>
+          <div class="log-entry-response">${esc(e.response)}</div>
+          <button class="btn-log-copy" id="lc${i}" onclick="copyLogEntry(${i})">Copy</button>
+        </div>`).join("");
+    }
+
+    function esc(s) {
+      return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    }
+
+    function copyLatest() {
+      if (!entries.length) return;
+      navigator.clipboard.writeText(entries[0].formatted);
+      flash("btnCopyLatest", "Copied ✓", "Copy entry", "latest");
+    }
+
+    function copyLogEntry(i) {
+      navigator.clipboard.writeText(entries[i].formatted);
+      flash(`lc${i}`, "Copied ✓", "Copy", `lc${i}`);
+    }
+
+    function copyAll() {
+      navigator.clipboard.writeText(entries.map(e => e.formatted).join("\n\n---\n\n"));
+      const btn = document.getElementById("btnCopyAll");
+      const orig = btn.textContent;
+      btn.textContent = "Copied ✓"; btn.classList.add("copied");
+      clearTimeout(copiedTimers["all"]);
+      copiedTimers["all"] = setTimeout(() => { btn.textContent = orig; btn.classList.remove("copied"); }, 2000);
+    }
+
+    function flash(id, on, off, key) {
+      const btn = document.getElementById(id);
+      btn.textContent = on; btn.classList.add("copied");
+      clearTimeout(copiedTimers[key]);
+      copiedTimers[key] = setTimeout(() => { btn.textContent = off; btn.classList.remove("copied"); }, 2000);
+    }
+  </script>
+</body>
+</html>
